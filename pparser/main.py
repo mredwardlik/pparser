@@ -4,120 +4,116 @@
 pparser.main
 ~~~~~~~~~~~~
 
-This module provides a PParser object to manage 
-bs4 and pyppeteer together.
-
-
+This module provides a PParser object to manage
+BeautifulSoup and a headless browser together.
 '''
 
-
 from __future__ import annotations
+
 import typing as t
 
 from bs4 import BeautifulSoup
 from bs4.element import ResultSet, Tag
 
-from pparser.pbrowser import PBrowser
-from pparser.utils import merge_queries
+from pparser.pbrowser import PBrowser, WaitUntil
 from pparser.url_parser import UrlParser
+from pparser.utils import Query
+
+__all__ = ['PParser']
 
 
 class PParser:
+    """Load pages in a real browser and parse them with BeautifulSoup.
 
-    def __init__(self, url: str, **pbrowser_options):
+    Pages are rendered by a headless browser first, so content added by
+    JavaScript is there too. The browser starts on the first request and is
+    reused for the next ones.
+
+    >>> with PParser('https://quotes.toscrape.com/js/') as pp:   # doctest: +SKIP
+    ...     for quote in pp.select('.quote', wait_for='.quote'):
+    ...         print(quote.select_one('.text').get_text())
+
+    :param url: base URL. Every request can change its path and query.
+    :param browser_options: see :class:`pparser.pbrowser.PBrowser`:
+        ``headless``, ``width``, ``height``, ``timeout``, ``user_agent``,
+        ``locale``, ``browser``, and Playwright launch options like ``channel``.
+    """
+
+    def __init__(self, url: str, **browser_options: t.Any):
         self._url_parser: UrlParser = UrlParser(url)
-        self._pbrowser: PBrowser = PBrowser(**pbrowser_options)
+        self._pbrowser: PBrowser = PBrowser(**browser_options)
 
-    def soup(self, options: t.Dict[str, t.Any] = {}) -> BeautifulSoup:
-        '''Prepare soup by creaing a new instance :class:`bs4.BeautifulSoup`.
+    def __repr__(self) -> str:
+        return f'PParser({self._url_parser.full_url!r})'
 
-        Available options:
-        :param query: (str|Dict[str, Any]) Change query part of the `url`.
-        :param ignoreHTTPSErrors: (bool) Whether to ignore HTTPS errors. Defaults to 
-            `False`.
-        :param headless: (bool) Whether to run browser in headless mode. Defaults to
-            `True` unless `appMode` or `devtools` options is `True`.
-        :param executablePath: (str) Path to a Chromium or Chrome executable to run
-            instead of default bundled Chromium.
-        :param slowMo: (int|float) Slow down pyppeteer operations by the specified
-            amount of milliseconds.
-        :param defaultViewport: (dict) Set a consistent viewport for each page.
-            Defaults to an 800x600 viewport. `None` disables default viewport.
-        :param width: (int) page width in pixels. Defaults to `1920`.
-        :param height: (int) page height in pixels. Defaults to `1080`.
-        :param deviceScaleFactor: (int|float) Specify device scale factor (can be
-            thought as dpr). Defaults to `1`.
-        :param isMobile: (bool) Whether the `meta viewport` tag is taken into
-            account. Defaults to `False`.
-        :param hasTouch: (bool) Specify if viewport supports touch events.
-            Defaults to `False`.
-        :param isLandscape: (bool) Specify if viewport is in landscape mode.
-            Defaults to `False`.
-        :param args: (List[str]) Additional arguments (flags) to pass to the browser
-            process.
-        :param ignoreDefaultArgs: (bool or List[str]) If `True`, do not use
-            :func:`~pyppeteer.defaultArgs`. If list is given, then filter 
-            out givendefault arguments. Dangerous option; use with care.
-            Defaults to `False`.
-        :param handleSIGINT: (bool) Close the browser process on Ctrl+C. Defaults to
-            `True`.
-        :param handleSIGTERM: (bool) Close the browser process on SIGTERM. Defaults
-            to `True`.
-        :param handleSIGHUP: (bool) Close the browser process on SIGHUP. Defaults to
-            `True`.
-        :param dumpio: (bool) Whether to pipe the browser process stdout and stderr
-            into `process.stdout` and `process.stderr`. Defaults to `False`.
-        :param userDataDir: (str) Path to a user data directory.
-        :param env: (dict) Specify environment variables that will be visible to the
-            browser. Defaults to same as python process.
-        :param devtools: (bool) Whether to auto-open a DevTools panel for each tab.
-            If this option is ``True``, the ``headless`` option will be set ``False``.
-        :param logLevel: (int|str) Log level to print logs. Defaults to same as the
-            root logger.
-        :param autoClose: (bool) Automatically close browser process when script
-            completed. Defaults to `True`.
-        :param loop: (asyncio.AbstractEventLoop) Event loop (**experimental**).
-        :param appMode: (bool) Deprecated.
-        :return: Instance of :class:`bs4.BeatifulSoup` class. 
-        :rtype: :class:`bs4.BeatifulSoup`.
-        '''
-        _url_parser = self._url_parser.copywith(
-            query=merge_queries(self._url_parser.query, options.get('query', {})))
-        soup = BeautifulSoup((self._pbrowser.get_content(
-            url=_url_parser.full_url, **options)), 'html.parser')
-        return soup
+    @property
+    def base_url(self) -> UrlParser:
+        return self._url_parser
 
-    def select(self, selector: str, namespaces: t.Any = None, limit: t.Optional[t.Any] = None, options: t.Dict[str, t.Any] = {}, **kwargs) -> ResultSet:
-        ''' Perform a CSS selection operation on the current element.
-        This uses the SoupSieve library.
-        :param selector: A string containing a CSS selector.
-        :param namespaces: A dictionary mapping namespace prefixes
-            used in the CSS selector to namespace URIs. 
-            By default, Beautiful Soup will use the prefixes 
-            it encountered while parsing the document.
-        :param limit: After finding this number of results, stop looking.
-        :param kwargs: Keyword arguments to be passed into SoupSieve's
-            soupsieve.select() method.
-        :return: A ResultSet of Tags.
-        :rtype: :class:`bs4.element.ResultSet`.
-        '''
-        soup = self.soup(options)
-        result_set = soup.select(
-            selector, namespaces=namespaces, limit=limit, **kwargs)
-        return result_set
+    def url(self, path: t.Optional[str] = None, query: Query = None) -> str:
+        """The URL a request with these ``path`` and ``query`` opens.
 
-    def select_one(self, selector: str, namespaces: t.Any = None, options: t.Dict[str, t.Any] = {}, **kwargs) -> Tag:
-        ''' Perform a CSS selection operation on the current element.
-        :param selector: A CSS selector.
-        :param namespaces: A dictionary mapping namespace prefixes
-            used in the CSS selector to namespace URIs. 
-            By default, Beautiful Soup will use the prefixes 
-            it encountered while parsing the document.
-        :param kwargs: Keyword arguments to be passed into SoupSieve's
-            soupsieve.select() method.
-        :return: A Tag.
-        :rtype: :class:`bs4.element.Tag`.
-        '''
-        soup = self.soup(options)
-        tag = soup.select_one(selector, namespaces=namespaces, **kwargs)
-        return tag
+        >>> PParser('https://example.com/list?page=1').url(query={'page': 3})
+        'https://example.com/list?page=3'
+        """
+        return self._url_parser.copywith(path=path, query=query).full_url
+
+    def html(
+        self,
+        path: t.Optional[str] = None,
+        query: Query = None,
+        wait_for: t.Optional[str] = None,
+        wait_until: WaitUntil = 'load',
+        delay: float = 0,
+        timeout: t.Optional[float] = None,
+    ) -> str:
+        """Rendered HTML of the page.
+
+        :param path: another path on the same site, absolute (``/page/2/``)
+            or relative to the base URL (``page/2/``).
+        :param query: query parameters to add or replace, as a ``dict`` or a
+            string. ``None`` as a value removes the parameter.
+        :param wait_for: CSS selector to wait for. Use it for content that
+            is loaded by JavaScript.
+        :param wait_until: ``load`` (default), ``domcontentloaded``,
+            ``networkidle`` or ``commit``.
+        :param delay: extra pause in seconds after the page is ready.
+        :param timeout: timeout in seconds, instead of the default one.
+        :raises pparser.PageLoadError: network error, HTTP error or timeout.
+        """
+        return self._pbrowser.get_content(
+            self.url(path, query), wait_for=wait_for, wait_until=wait_until,
+            delay=delay, timeout=timeout)
+
+    def soup(self, path: t.Optional[str] = None, query: Query = None, **load_options: t.Any) -> BeautifulSoup:
+        """Load the page and return it as :class:`bs4.BeautifulSoup`.
+
+        Takes the same arguments as :meth:`html`.
+        """
+        return BeautifulSoup(self.html(path, query, **load_options), 'html.parser')
+
+    def select(self, selector: str, *, limit: t.Optional[int] = None, **load_options: t.Any) -> ResultSet:
+        """Load the page and return all elements that match a CSS selector.
+
+        Takes the same keyword arguments as :meth:`html`. To run several
+        selectors on one page, load it once with :meth:`soup`.
+        """
+        return self.soup(**load_options).select(selector, limit=limit)
+
+    def select_one(self, selector: str, **load_options: t.Any) -> t.Optional[Tag]:
+        """Load the page and return the first element that matches, or ``None``."""
+        return self.soup(**load_options).select_one(selector)
+
+    def screenshot(self, path: str, full_page: bool = True) -> None:
+        """Save a screenshot of the last loaded page, handy for debugging."""
+        self._pbrowser.screenshot(path, full_page=full_page)
+
+    def close(self) -> None:
+        """Stop the browser. The next request starts it again."""
+        self._pbrowser.close()
+
+    def __enter__(self) -> PParser:
+        return self
+
+    def __exit__(self, *exc: t.Any) -> None:
+        self.close()

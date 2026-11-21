@@ -11,7 +11,7 @@ object. It also merges query parameters for you, which makes search and
 pagination one line each. It works as a Python library and from the command line.
 
 [![tests](https://github.com/mredwardlik/pparser/actions/workflows/tests.yml/badge.svg)](https://github.com/mredwardlik/pparser/actions/workflows/tests.yml)
-![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-2EAD33?style=flat-square&logo=playwright&logoColor=white)
 ![BeautifulSoup](https://img.shields.io/badge/BeautifulSoup-4-orange?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
@@ -58,7 +58,7 @@ pip install git+https://github.com/mredwardlik/pparser.git
 python -m playwright install chromium     # downloads the browser once
 ```
 
-Python 3.9 or newer. If you already have Chrome or Edge, you can skip the
+Python 3.10 or newer. If you already have Chrome or Edge, you can skip the
 second command and pass `channel="chrome"` / `--channel chrome`.
 
 ## 🐍 Usage

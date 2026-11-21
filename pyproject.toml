@@ -9,7 +9,7 @@ description = "Load pages in a headless browser and parse them with BeautifulSou
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Edward Lik" }]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "beautifulsoup4>=4.11",
     "playwright>=1.40",

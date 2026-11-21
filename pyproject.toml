@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pparser"
+version = "1.0.0"
+description = "Load pages in a headless browser and parse them with BeautifulSoup"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Edward Lik" }]
+requires-python = ">=3.9"
+dependencies = [
+    "beautifulsoup4>=4.11",
+    "playwright>=1.40",
+]
+keywords = ["parser", "scraping", "beautifulsoup", "playwright", "headless", "browser"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "Topic :: Text Processing :: Markup :: HTML",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+pparser = "pparser.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/mredwardlik/pparser"
+Issues = "https://github.com/mredwardlik/pparser/issues"
+
+[tool.setuptools]
+packages = ["pparser"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "pparser"]
+addopts = "--doctest-modules --ignore=pparser/__main__.py"
